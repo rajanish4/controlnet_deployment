@@ -53,7 +53,7 @@ def main():
     tester.test_generate_endpoint('inputs/images/mri_brain.jpg')
     
     # Test config-based generation
-    tester.test_generate_from_config('inputs/configs/parameters.json')
+    tester.test_generate_from_config('parameters.json')
 
 if __name__ == "__main__":
     main() 
