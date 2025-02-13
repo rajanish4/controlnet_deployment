@@ -42,13 +42,13 @@ controlnet-deployment/
 │   ├── main.py            # API endpoints and middleware
 │   └── model.py           # ControlNet model wrapper and inference code
 ├── annotator/             # Edge detection modules
-├── cldm/                 # ControlNet model architecture
-├── ldm/                  # Latent diffusion modules
-├── models/               # Model checkpoints & configuration files
-├── inputs/               # Input images and configuration JSONs
+├── cldm/                  # ControlNet model architecture
+├── ldm/                   # Latent diffusion modules
+├── models/                # Model checkpoints & configuration files
+├── inputs/                # Input images and configuration JSONs
 │   ├── images/
 │   └── configs/
-└── outputs/              # Generated images
+└── outputs/               # Generated images
 ```
 
 ## Installation
