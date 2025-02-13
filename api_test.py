@@ -3,9 +3,6 @@ import json
 from pathlib import Path
 
 class ControlNetAPITester:
-    """
-    A simple tester for the ControlNet API endpoints.
-    """
     def __init__(self, base_url="http://127.0.0.1:8000"):
         self.base_url = base_url
         self.default_params = {
@@ -25,28 +22,20 @@ class ControlNetAPITester:
         }
 
     def test_generate_endpoint(self, image_path, output_path="output_direct.png"):
-        """
-        Test the /generate endpoint by uploading an image file.
-        """
+        """Test the /generate endpoint with direct parameters"""
         url = f"{self.base_url}/generate"
-        try:
-            with open(image_path, 'rb') as f:
-                files = {'file': ('image.jpg', f, 'image/jpeg')}
-                response = requests.post(url, files=files, data=self.default_params)
-            self._handle_response(response, output_path)
-        except Exception as e:
-            print(f"Error in test_generate_endpoint: {str(e)}")
+        
+        with open(image_path, 'rb') as f:
+            files = {'file': ('image.jpg', f, 'image/jpeg')}
+            response = requests.post(url, files=files, data=self.default_params)
+
+        self._handle_response(response, output_path)
 
     def test_generate_from_config(self, config_file, output_path="output_config.png"):
-        """
-        Test the /generate_from_config endpoint by sending a configuration file name.
-        """
+        """Test the /generate_from_config endpoint using a config file"""
         url = f"{self.base_url}/generate_from_config"
-        try:
-            response = requests.post(url, data={'config_file': config_file})
-            self._handle_response(response, output_path)
-        except Exception as e:
-            print(f"Error in test_generate_from_config: {str(e)}")
+        response = requests.post(url, data={'config_file': config_file})
+        self._handle_response(response, output_path)
 
     def _handle_response(self, response, output_path):
         if response.status_code == 200:
