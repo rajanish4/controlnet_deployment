@@ -1,24 +1,7 @@
-# for conda:
-# services:
-#   api:
-#     build: .
-#     image: controlnet-deployment:latest
-#     ports:
-#       - "8000:80"
-#     environment:
-#       - NVIDIA_VISIBLE_DEVICES=all
-#       - CONDA_DEFAULT_ENV=control_fastapi
-#     runtime: nvidia
-#     volumes:
-#       - ./models:/code/models
-#       - ./inputs:/code/inputs
-#       - ./outputs:/code/outputs
-
-# for pip:
 services:
   api:
     build: .
-    image: controlnet-deployment:pip
+    image: controlnet-deployment:1.0
     ports:
       - "8000:80"
     environment:
