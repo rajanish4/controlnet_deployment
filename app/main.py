@@ -93,7 +93,8 @@ async def generate_image(
     file: UploadFile = File(...),
     prompt: str = Form(...),
     a_prompt: str = Form("good quality"),
-    n_prompt: str = Form("animal, drawing, painting, vivid colors, longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality"),
+    n_prompt: str = Form("animal, drawing, painting, vivid colors, longbody, lowres, bad anatomy, \
+                         bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality"),
     num_samples: int = Form(1),
     image_resolution: int = Form(128),
     ddim_steps: int = Form(10),
