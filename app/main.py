@@ -17,6 +17,7 @@ from .model import ControlNetModel
 from transformers import logging
 logging.set_verbosity_error()
 
+# Create FastAPI instance with a title and description.
 app = FastAPI(title="ControlNet Demo")
 
 # Add CORS middleware
@@ -30,6 +31,7 @@ app.add_middleware(
 
 model = None
 
+# Pydantic model for validating and documenting the generation parameters.
 class GenerationParams(BaseModel):
     prompt: str
     a_prompt: str = 'good quality'
@@ -53,6 +55,7 @@ async def startup_event():
 def concatenate_images(left_img: Image.Image, right_img: Image.Image) -> Image.Image:
     """
     Concatenate two images side by side.
+    Creates a new image with width equal to the sum of widths and height equal to the maximum of both images.
     """
     w1, h1 = left_img.size
     w2, h2 = right_img.size
@@ -64,12 +67,22 @@ def concatenate_images(left_img: Image.Image, right_img: Image.Image) -> Image.I
     return concatenated
 
 def get_inputs_dir():
+    """
+    Return the base inputs directory depending on the environment.
+    If '/code/inputs' exists (e.g., when running in Docker), use it;
+    otherwise, use the local 'inputs' directory.
+    """
     if os.path.exists("/code/inputs"):
         return "/code/inputs"
     else:
         return str(Path.cwd() / "inputs")
 
 def get_outputs_dir():
+    """
+    Return the base outputs directory depending on the environment.
+    If '/code/outputs' exists (e.g., when running in Docker), use it;
+    otherwise, use the local 'outputs' directory.
+    """
     if os.path.exists("/code/outputs"):
         return "/code/outputs"
     else:
@@ -92,6 +105,11 @@ async def generate_image(
     low_threshold: int = Form(50),
     high_threshold: int = Form(100)
 ):
+    """
+    Endpoint to generate a synthetic image using an uploaded input image and given generation parameters.
+    
+    The endpoint returns a concatenated image that shows both the control (edge-detected) image and the generated image.
+    """
     # Assemble the GenerationParams model from form fields
     params = GenerationParams(
         prompt=prompt,
@@ -146,6 +164,11 @@ async def generate_image(
 
 @app.post("/generate_from_config")
 async def generate_from_config(config_file: str = Form(...)):
+    """
+    Endpoint to generate a synthetic image using a JSON configuration file.
+    
+    The specified config file (located in inputs/configs/) must define an 'image_path' and corresponding 'params'.
+    """
     # Dynamically get the base inputs directory.
     inputs_dir = get_inputs_dir()
     config_path = os.path.join(inputs_dir, "configs", config_file)
