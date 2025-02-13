@@ -14,6 +14,8 @@ from PIL import Image
 from typing import Optional
 
 from .model import ControlNetModel
+from transformers import logging
+logging.set_verbosity_error()
 
 app = FastAPI(title="ControlNet Demo")
 

@@ -72,7 +72,7 @@ COPY ./ldm /code/ldm
 # Set environment variables
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
-ENV TRANSFORMERS_VERBOSITY=error
+# ENV TRANSFORMERS_VERBOSITY=error
 
 
 # Expose the application port and set the default command
