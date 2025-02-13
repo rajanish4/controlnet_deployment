@@ -3,6 +3,7 @@ import os
 import numpy as np
 import json
 import io
+from pathlib import Path
 
 from datetime import datetime
 from fastapi import FastAPI, File, UploadFile, Form
@@ -60,6 +61,18 @@ def concatenate_images(left_img: Image.Image, right_img: Image.Image) -> Image.I
     concatenated.paste(right_img, (w1, 0))
     return concatenated
 
+def get_inputs_dir():
+    if os.path.exists("/code/inputs"):
+        return "/code/inputs"
+    else:
+        return str(Path.cwd() / "inputs")
+
+def get_outputs_dir():
+    if os.path.exists("/code/outputs"):
+        return "/code/outputs"
+    else:
+        return str(Path.cwd() / "outputs")
+
 @app.post("/generate")
 async def generate_image(
     file: UploadFile = File(...),
@@ -111,8 +124,8 @@ async def generate_image(
     timestamp = datetime.now().strftime('%d_%m_%y_%H_%M_%S')
     output_filename = f"{base_filename}_{timestamp}.png"
     
-    # Ensure output directory exists
-    output_dir = "/code/outputs"
+    # Use dynamic output directory
+    output_dir = get_outputs_dir()
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, output_filename)
     
@@ -131,16 +144,18 @@ async def generate_image(
 
 @app.post("/generate_from_config")
 async def generate_from_config(config_file: str = Form(...)):
-    # Load configuration
-    config_path = f"/code/inputs/configs/{config_file}"
+    # Dynamically get the base inputs directory.
+    inputs_dir = get_inputs_dir()
+    config_path = os.path.join(inputs_dir, "configs", config_file)
+    
     with open(config_path, 'r') as f:
         cfg = json.load(f)
     
     # Validate parameters using GenerationParams model
     params = GenerationParams(**cfg['params'])
     
-    # Read input image
-    image_path = f"/code/inputs/{cfg['image_path']}"
+    # Read input image using the dynamic inputs directory
+    image_path = os.path.join(inputs_dir, cfg['image_path'])
     img = cv2.imread(image_path)
     
     # Generate images
@@ -155,8 +170,8 @@ async def generate_from_config(config_file: str = Form(...)):
     timestamp = datetime.now().strftime('%d_%m_%y_%H_%M_%S')
     output_filename = f"{base_filename}_{timestamp}.png"
     
-    # Ensure output directory exists
-    output_dir = "/code/outputs"
+    # Use dynamic output directory
+    output_dir = get_outputs_dir()
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, output_filename)
     
