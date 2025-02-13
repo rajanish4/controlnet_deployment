@@ -45,7 +45,7 @@ class ControlNetModel:
 
     def generate(self, input_image: np.ndarray, params: dict) -> (np.ndarray, np.ndarray):
         """
-        Generate a synthetic image and the corresponding control image (edge map) based on the given input.
+        Generate synthetic images and the corresponding control image (edge map) based on the given input.
         
         Process:
           1. Preprocess the input image: convert to HWC3 format and resize based on 'image_resolution'.
@@ -57,7 +57,7 @@ class ControlNetModel:
              and 'n_prompt' for negative guidance.
           7. Run the DDIM sampler with the specified number of steps ('ddim_steps'), sampling parameters,
              and latent shape derived from the preprocessed image.
-          8. Decode the latent representation to obtain the final generated image.
+          8. Decode the latent representation to obtain the final generated images.
         
         Parameters:
           input_image (np.ndarray): The input image as a numpy array.
@@ -68,7 +68,7 @@ class ControlNetModel:
         
         Returns:
           tuple:
-            - Generated image (first sample) as a numpy array.
+            - Generated images as a numpy array of shape (num_samples, height, width, channels).
             - Detected edge map (control image) as a numpy array.
         """
         with torch.no_grad():
@@ -80,7 +80,7 @@ class ControlNetModel:
             detected_map = self.apply_canny(img, params['low_threshold'], params['high_threshold'])
             detected_map = HWC3(detected_map)  # Detected edge image as a numpy array
 
-            # Prepare control tensor for the model
+            # Prepare control tensor from detected edges. Normalize the tensor and rearrange dimensions.
             control = torch.from_numpy(detected_map.copy()).float().cuda() / 255.0
             control = torch.stack([control for _ in range(params['num_samples'])], dim=0)
             control = einops.rearrange(control, 'b h w c -> b c h w').clone()
@@ -118,6 +118,7 @@ class ControlNetModel:
                     [params['strength'] * (0.825 ** float(12 - i)) for i in range(13)]
                     if params['guess_mode'] else ([params['strength']] * 13)
                 )
+
                 # Run the DDIM sampler to generate samples.
                 samples, _ = self.ddim_sampler.sample(
                     params['ddim_steps'],
@@ -138,6 +139,6 @@ class ControlNetModel:
                 x_samples = (
                     einops.rearrange(x_samples, 'b c h w -> b h w c') * 127.5 + 127.5
                 ).cpu().numpy().clip(0, 255).astype(np.uint8)
-                
-                # Return the first generated sample and the detected edge map.
-                return x_samples[0], detected_map
+
+                # Return all generated samples and the detected edge map.
+                return x_samples, detected_map

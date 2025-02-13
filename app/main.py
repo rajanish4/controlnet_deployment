@@ -6,7 +6,7 @@ import io
 from pathlib import Path
 
 from datetime import datetime
-from fastapi import FastAPI, File, UploadFile, Form
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -18,7 +18,10 @@ from transformers import logging
 logging.set_verbosity_error()
 
 # Create FastAPI instance with a title and description.
-app = FastAPI(title="ControlNet Demo")
+app = FastAPI(
+    title="ControlNet Demo",
+    description="This API allows generation of synthetic images using the ControlNet model via REST endpoints."
+)
 
 # Add CORS middleware
 app.add_middleware(
@@ -35,7 +38,8 @@ model = None
 class GenerationParams(BaseModel):
     prompt: str
     a_prompt: str = 'good quality'
-    n_prompt: str = 'animal, drawing, painting, vivid colors, longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality'
+    n_prompt: str = 'animal, drawing, painting, vivid colors, longbody, lowres, bad anatomy, \
+    bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality'
     num_samples: int = 1
     image_resolution: int = 128
     ddim_steps: int = 10
@@ -109,7 +113,8 @@ async def generate_image(
     """
     Endpoint to generate a synthetic image using an uploaded input image and given generation parameters.
     
-    The endpoint returns a concatenated image that shows both the control (edge-detected) image and the generated image.
+    The endpoint returns a concatenated image showing the control (edge-detected) image and a preview (the first generated sample).
+    All generated samples are saved in the output directory with unique filenames.
     """
     # Assemble the GenerationParams model from form fields
     params = GenerationParams(
@@ -132,31 +137,33 @@ async def generate_image(
     contents = await file.read()
     nparr = np.frombuffer(contents, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    if img is None:
+        raise HTTPException(status_code=400, detail="Invalid image file.")
     
-    # Call the model to get both generated and control images
+    # Generate images using the model.
     generated_np, control_np = model.generate(img, params.dict())
     
-    # Convert numpy arrays to PIL Images
-    generated_img = Image.fromarray(generated_np)
+    # Convert generated samples to PIL Images.
+    generated_imgs = [Image.fromarray(sample) for sample in generated_np]
     control_img = Image.fromarray(control_np)
     
-    # Create unique filename with timestamp
+    # Create a unique filename with timestamp.
     base_filename, _ = os.path.splitext(file.filename)
     timestamp = datetime.now().strftime('%d_%m_%y_%H_%M_%S')
-    output_filename = f"{base_filename}_{timestamp}.png"
-    
-    # Use dynamic output directory
     output_dir = get_outputs_dir()
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, output_filename)
     
-    # Save generated image
-    generated_img.save(output_path)
+    # Save all generated samples with unique filenames.
+    for i, gen_img in enumerate(generated_imgs):
+        sample_filename = f"{base_filename}_{timestamp}_{i+1}.png"
+        sample_path = os.path.join(output_dir, sample_filename)
+        gen_img.save(sample_path)
     
-    # Concatenate control and generated images
-    concat_img = concatenate_images(control_img, generated_img)
+    # Prepare preview: concatenate control image and the first generated sample.
+    preview_img = generated_imgs[0]
+    concat_img = concatenate_images(control_img, preview_img)
     
-    # Convert to bytes for response
+    # Convert preview image to bytes for the response.
     img_byte_arr = io.BytesIO()
     concat_img.save(img_byte_arr, format='PNG')
     img_byte_arr.seek(0)
@@ -169,45 +176,53 @@ async def generate_from_config(config_file: str = Form(...)):
     Endpoint to generate a synthetic image using a JSON configuration file.
     
     The specified config file (located in inputs/configs/) must define an 'image_path' and corresponding 'params'.
+    The endpoint returns a concatenated preview image and saves all generated samples with unique filenames.
     """
-    # Dynamically get the base inputs directory.
     inputs_dir = get_inputs_dir()
     config_path = os.path.join(inputs_dir, "configs", config_file)
+    
+    if not os.path.exists(config_path):
+        raise HTTPException(status_code=404, detail="Configuration file not found.")
     
     with open(config_path, 'r') as f:
         cfg = json.load(f)
     
-    # Validate parameters using GenerationParams model
+    # Validate parameters using GenerationParams.
     params = GenerationParams(**cfg['params'])
     
-    # Read input image using the dynamic inputs directory
+    # Read the input image.
     image_path = os.path.join(inputs_dir, cfg['image_path'])
-    img = cv2.imread(image_path)
+    if not os.path.exists(image_path):
+        raise HTTPException(status_code=404, detail="Input image not found.")
     
-    # Generate images
+    img = cv2.imread(image_path)
+    if img is None:
+        raise HTTPException(status_code=400, detail="Invalid image file.")
+    
+    # Generate images using the model.
     generated_np, control_np = model.generate(img, params.dict())
     
-    # Convert to PIL Images
-    generated_img = Image.fromarray(generated_np)
+    # Convert generated samples to PIL Images.
+    generated_imgs = [Image.fromarray(sample) for sample in generated_np]
     control_img = Image.fromarray(control_np)
     
-    # Create unique filename
+    # Create a unique filename with timestamp.
     base_filename = os.path.splitext(os.path.basename(image_path))[0]
     timestamp = datetime.now().strftime('%d_%m_%y_%H_%M_%S')
-    output_filename = f"{base_filename}_{timestamp}.png"
-    
-    # Use dynamic output directory
     output_dir = get_outputs_dir()
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, output_filename)
     
-    # Save generated image
-    generated_img.save(output_path)
+    # Save all generated samples with unique filenames.
+    for i, gen_img in enumerate(generated_imgs):
+        sample_filename = f"{base_filename}_{timestamp}_{i+1}.png"
+        sample_path = os.path.join(output_dir, sample_filename)
+        gen_img.save(sample_path)
     
-    # Concatenate images
-    concat_img = concatenate_images(control_img, generated_img)
+    # Prepare preview using the first generated sample.
+    preview_img = generated_imgs[0]
+    concat_img = concatenate_images(control_img, preview_img)
     
-    # Convert to bytes for response
+    # Convert preview image to bytes for the response.
     img_byte_arr = io.BytesIO()
     concat_img.save(img_byte_arr, format='PNG')
     img_byte_arr.seek(0)
