@@ -28,9 +28,13 @@ This project provides a containerized deployment of ControlNet with the followin
 ## System Requirements
 
 Tested configuration:
-- NVIDIA GPU with CUDA support
+
+- Intel core i5-6500 (3.2 GHz)
+- 32 GB RAM
+- NVIDIA GPU (NVIDIA GeForce GTX 1050 Ti): 4GB VRAM
+
 - Docker with NVIDIA Container Toolkit
-- Python 3.8+
+- Python 3.8
 - CUDA 11.8
 - PyTorch 2.1.0
 
